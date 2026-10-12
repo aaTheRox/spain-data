@@ -75,7 +75,7 @@ export const INDICATORS: IndicatorSeed[] = [
   // ─────────────────────────────── Empleo ───────────────────────────────
   {
     id: 'tasa-paro',
-    title: 'Tasa de paro (15-74 años)',
+    title: 'Tasa de paro',
     category: 'empleo',
     summary:
       'Porcentaje de la población activa sin empleo que busca trabajo, con datos ajustados estacionalmente.',
