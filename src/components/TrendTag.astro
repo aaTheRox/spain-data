@@ -1,0 +1,46 @@
+---
+import type { Indicator } from '../types';
+
+interface Props {
+  indicator: Indicator;
+}
+
+const { indicator } = Astro.props;
+
+// El color nunca va solo: cada etiqueta lleva flecha y palabra.
+const meta = {
+  up: {
+    class: 'border-rise/40 bg-rise-bg text-rise',
+    arrow: '▲',
+    word: 'sube',
+  },
+  down: {
+    class: 'border-fall/40 bg-fall-bg text-fall',
+    arrow: '▼',
+    word: 'baja',
+  },
+  mixed: {
+    class: 'border-rule-strong bg-surface-raised text-muted',
+    arrow: '◆',
+    word: 'recorrido irregular',
+  },
+  neutral: {
+    class: 'border-rule-strong bg-surface-raised text-muted',
+    arrow: '■',
+    word: 'estable',
+  },
+} as const;
+
+const tag = meta[indicator.trend];
+---
+
+<span
+  class:list={[
+    'inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.8125rem] font-semibold transition-colors duration-400 ease-[cubic-bezier(0.16,1,0.3,1)]',
+    tag.class,
+  ]}
+>
+  <span aria-hidden="true">{tag.arrow}</span>
+  {tag.word} {indicator.change.absoluteLabel}
+</span>
+<span class="sr-only">Variación: {indicator.change.verdict}.</span>

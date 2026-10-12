@@ -1,0 +1,260 @@
+---
+import { SITE } from '../data/site';
+import { DATA_REVIEWED_AT } from '../data/indicators';
+import ThemeToggle from './ThemeToggle.astro';
+
+const { path = '/' } = Astro.props;
+
+/** Páginas principales: comparten peso y reciben el mismo tratamiento. */
+const nav = [
+  { href: '/', label: 'Indicadores' },
+  { href: '/metodologia/', label: 'Metodología' },
+];
+
+/**
+ * El feed de cambios de datos es una acción secundaria, no una sección: en
+ * escritorio se presenta como botón con icono anidado y en móvil mantiene su
+ * sitio natural dentro de la lista.
+ */
+const feed = { href: '/actualizacion.xml', label: 'Cambios de datos' };
+
+const reviewLabel = new Intl.DateTimeFormat('es-ES', {
+  dateStyle: 'long',
+}).format(new Date(DATA_REVIEWED_AT));
+---
+
+<!--
+  Barra como isla flotante, no como franja pegada al borde: se despega del
+  borde superior, se cierra en una píldora y usa doble bisel (bandeja + núcleo).
+  `backdrop-filter` solo se aplica aquí y en el velo del menú, porque ambos son
+  elementos fijos; en contenedores con scroll provocaría repintados continuos.
+-->
+<div aria-hidden="true" class="h-px" data-nav-sentinel></div>
+
+<header class="sticky top-0 z-30 pt-[clamp(0.875rem,2.2vw,1.5rem)]" data-nav data-scrolled="false">
+  <div class="page-shell">
+    <div class="island-tray">
+      <div class="island-core flex items-center gap-1 py-1.5 pe-1.5 ps-5">
+        <a
+          class="group inline-flex items-center gap-2.5 rounded-full text-ink no-underline"
+          href="/"
+          aria-label={`${SITE.name}: ir a la página de indicadores`}
+        >
+          <span class="font-display text-[1.35rem] leading-none font-medium tracking-tight">
+            {SITE.name}
+          </span>
+          <span
+            class="size-[5px] rounded-full bg-accent opacity-70 transition-transform duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-150 group-hover:opacity-100"
+            aria-hidden="true"
+          ></span>
+        </a>
+
+        <span class="mx-1.5 hidden h-6 w-px self-stretch bg-rule lg:block" aria-hidden="true"></span>
+
+        <nav class="hidden items-center gap-1 lg:flex" aria-label="Principal">
+          {
+            nav.map((item) => (
+              <a
+                class="nav-link"
+                href={item.href}
+                aria-current={path === item.href ? 'page' : undefined}
+              >
+                <span class="relative inline-flex items-center gap-2">
+                  {path === item.href && (
+                    <span
+                      class="size-[5px] rounded-full bg-accent"
+                      aria-hidden="true"
+                    />
+                  )}
+                  {item.label}
+                </span>
+              </a>
+            ))
+          }
+
+          <a class="nav-action ms-1" href={feed.href}>
+            <span class="relative">{feed.label}</span>
+            <span class="nav-action-icon" aria-hidden="true">
+              <svg width="11" height="11" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M4.5 11.5 11.5 4.5M6 4.5h5.5V10"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"></path>
+              </svg>
+            </span>
+          </a>
+        </nav>
+
+        <div class="ms-auto flex items-center gap-1.5">
+          <ThemeToggle />
+
+          <button
+            class="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-rule bg-transparent text-ink-soft transition-[background-color,border-color,color,transform] duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-rule-strong hover:bg-accent-soft hover:text-ink active:scale-95 lg:hidden"
+            type="button"
+            id="menu-toggle"
+            aria-expanded="false"
+            aria-controls="menu-veil"
+            aria-label="Abrir el menú"
+          >
+            <span class="burger" aria-hidden="true">
+              <span class="burger-bar burger-bar-top"></span>
+              <span class="burger-bar burger-bar-bottom"></span>
+            </span>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="menu-veil lg:hidden" id="menu-veil" data-open="false">
+    <nav class="grid gap-1" aria-label="Menú principal">
+      {
+        [...nav, feed].map((item, index) => (
+          <a
+            class:list={[
+              'menu-entry block border-b border-rule py-4 font-display text-[clamp(2rem,9vw,3rem)] leading-none tracking-tight no-underline transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]',
+              index === 0 && 'delay-100',
+              index === 1 && 'delay-150',
+              index === 2 && 'delay-200',
+            ]}
+            href={item.href}
+            aria-current={path === item.href ? 'page' : undefined}
+          >
+            <span class={path === item.href ? 'text-ink' : 'text-muted'}>{item.label}</span>
+          </a>
+        ))
+      }
+    </nav>
+
+    <div class="menu-entry delay-300 grid gap-2 text-[0.9rem] text-muted">
+      <p>
+        Datos revisados el <time datetime={DATA_REVIEWED_AT}>{reviewLabel}</time>.
+      </p>
+      <p>
+        Errores o series caducadas:
+        <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a>
+      </p>
+    </div>
+  </div>
+</header>
+
+<script>
+  /**
+   * Comportamiento de la barra: estado al desplazarse y menú móvil.
+   *
+   * Sin escuchas de `scroll`: la opacidad se decide con un `IntersectionObserver`
+   * sobre un centinela de 1px, y el menú se controla con atributos ARIA, tal
+   * como pide el resto de la interfaz.
+   */
+  const nav = document.querySelector<HTMLElement>('[data-nav]');
+
+  if (nav) {
+    const sentinel = document.querySelector<HTMLElement>('[data-nav-sentinel]');
+
+    if (sentinel) {
+      new IntersectionObserver(
+        ([entry]) => {
+          nav.dataset.scrolled = String(!entry?.isIntersecting);
+        },
+        { threshold: 0 },
+      ).observe(sentinel);
+    }
+
+    const toggle = nav.querySelector<HTMLButtonElement>('#menu-toggle');
+    const veil = nav.querySelector<HTMLElement>('#menu-veil');
+    const root = document.documentElement;
+    const desktop = window.matchMedia('(min-width: 1024px)');
+    let previousOverflow = '';
+
+    const isOpen = () => veil?.dataset.open === 'true';
+
+    const setMenu = (open: boolean) => {
+      if (!veil || !toggle) return;
+      if (isOpen() === open) return;
+
+      veil.dataset.open = String(open);
+      toggle.setAttribute('aria-expanded', String(open));
+      toggle.setAttribute('aria-label', open ? 'Cerrar el menú' : 'Abrir el menú');
+
+      // El scroll queda bloqueado mientras el velo cubre la pantalla.
+      // `scrollbar-gutter: stable` evita que el bloqueo desplace el contenido.
+      if (open) {
+        previousOverflow = root.style.overflow;
+        root.style.overflow = 'hidden';
+        veil.querySelector<HTMLAnchorElement>('a')?.focus();
+      } else {
+        root.style.overflow = previousOverflow;
+        if (!desktop.matches) toggle.focus();
+      }
+    };
+
+    toggle?.addEventListener('click', () => setMenu(!isOpen()));
+
+    // Escape cierra y devuelve el control al sitio: sin él, el velo abierto
+    // dejaría al usuario sin forma de volver al documento con teclado.
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape' && isOpen()) setMenu(false);
+    });
+
+    for (const link of veil?.querySelectorAll<HTMLAnchorElement>('a') ?? []) {
+      link.addEventListener('click', () => setMenu(false));
+    }
+
+    // Al pasar a escritorio el velo deja de existir: se cierra para no dejar
+    // el cuerpo bloqueado.
+    desktop.addEventListener('change', (event) => {
+      if (event.matches) setMenu(false);
+    });
+  }
+</script>
+
+<main id="contenido">
+  <slot />
+</main>
+
+<footer class="border-t border-rule py-20 text-[0.95rem]">
+  <div class="page-shell">
+    <div class="grid gap-12 md:grid-cols-[2fr_1fr_1fr]">
+      <div>
+        <h2 class="mb-4 text-[1.1rem] font-semibold">Qué es esta página</h2>
+        <p class="prose-measure leading-relaxed text-muted">
+          {SITE.name} compara indicadores oficiales de España desde el 1 de junio de 2018. Cada
+          cifra procede de una fuente primaria enlazada y muestra su periodo exacto. La página no
+          atribuye a un gobierno concreto los cambios observados: documenta magnitudes y sus
+          límites.
+        </p>
+      </div>
+      <div>
+        <h2 class="mb-4 text-[1.1rem] font-semibold">Secciones</h2>
+        <ul class="grid gap-2.5">
+          <li><a href="/#explorador">Explorador por categorías</a></li>
+          <li><a href="/#comparativa">Comparativa de periodos</a></li>
+          <li><a href="/#grafica">Gráficas de evolución</a></li>
+          <li><a href="/#cronologia">Hitos y cronología</a></li>
+          <li><a href="/metodologia/">Metodología y fuentes</a></li>
+        </ul>
+      </div>
+      <div>
+        <h2 class="mb-4 text-[1.1rem] font-semibold">Fuente y corrección</h2>
+        <ul class="grid gap-2.5">
+          <li><a href="/metodologia/#fuentes">Todas las series enlazadas</a></li>
+          <li>
+            Última revisión de datos: <time datetime={DATA_REVIEWED_AT}>{reviewLabel}</time>
+          </li>
+          <li>
+            Errores o series caducadas:
+            <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+    <p class="mt-12 border-t border-rule pt-8 text-muted">
+      Datos de Eurostat. Todos los indicadores usan metodología armonizada, de modo que la
+      comparación con la media de la Unión Europea sea válida. Este sitio no aloja datos ni hace
+      scraping en el navegador: las cifras se incrustan en la compilación y se verifican contra la
+      fuente antes de publicar.
+    </p>
+  </div>
+</footer>

@@ -1,0 +1,145 @@
+---
+import type { DataPoint } from '../types';
+import { formatNumber, periodLabel } from '../lib/indicators';
+
+interface Props {
+  points: DataPoint[];
+  /** Periodo que marca la referencia política (se dibuja como línea vertical). */
+  markerPeriod?: string;
+  label: string;
+  unit: string;
+  height?: number;
+}
+
+const { points, markerPeriod, label, unit, height = 112 } = Astro.props;
+
+const width = 1000;
+const paddingX = 8;
+const paddingY = 14;
+
+const values = points.map((point) => point.value);
+const min = Math.min(...values);
+const max = Math.max(...values);
+const span = max - min || 1;
+
+// El eje arranca en el mínimo real de la serie, nunca recortado.
+const floor = min - span * 0.25;
+const ceiling = max + span * 0.25;
+const range = ceiling - floor || 1;
+
+const x = (index: number) =>
+  paddingX + (index / Math.max(points.length - 1, 1)) * (width - paddingX * 2);
+const y = (value: number) =>
+  height - paddingY - ((value - floor) / range) * (height - paddingY * 2);
+
+const path = points
+  .map(
+    (point, index) =>
+      `${index === 0 ? 'M' : 'L'}${x(index).toFixed(2)},${y(point.value).toFixed(2)}`,
+  )
+  .join(' ');
+
+// El área bajo la línea da peso visual al recorrido sin añadir color nuevo.
+const area = `${path} L${x(points.length - 1).toFixed(2)},${height - paddingY} L${paddingX},${height - paddingY} Z`;
+
+const markerIndex = markerPeriod
+  ? points.findIndex((point) => point.period === markerPeriod)
+  : -1;
+
+const first = points[0];
+const last = points[points.length - 1];
+const peak = points.reduce((best, point) => (point.value > best.value ? point : best), points[0] as DataPoint);
+const trough = points.reduce((worst, point) => (point.value < worst.value ? point : worst), points[0] as DataPoint);
+
+const fmt = (value: number) => formatNumber(value, 1);
+
+/** Solo el año, para los rótulos del eje en pantallas estrechas. */
+const yearOf = (period: string) => /^(\d{4})/.exec(period)?.[1] ?? period;
+
+---
+
+<svg
+  class="block w-full"
+  style={`height:${height}px`}
+  viewBox={`0 0 ${width} ${height}`}
+  preserveAspectRatio="none"
+  role="img"
+  aria-labelledby="spark-title spark-desc"
+>
+  <title id="spark-title">{label}</title>
+  <desc id="spark-desc">
+    Serie mensual de {first ? periodLabel(first.period) : ''} a {last ? periodLabel(last.period) : ''}.
+    Valor inicial {first ? fmt(first.value) : ''} {unit}, valor actual {last ? fmt(last.value) : ''} {unit}.
+    Máximo {fmt(max)} {unit} en {periodLabel(peak?.period ?? '')} y mínimo {fmt(min)} {unit} en{' '}
+    {periodLabel(trough?.period ?? '')}.
+  </desc>
+
+  <defs>
+    <linearGradient id="spark-fill" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="var(--color-rise)" stop-opacity="0.22"></stop>
+      <stop offset="100%" stop-color="var(--color-rise)" stop-opacity="0"></stop>
+    </linearGradient>
+  </defs>
+
+  <path d={area} fill="url(#spark-fill)"></path>
+  <path
+    d={path}
+    fill="none"
+    stroke="var(--color-rise)"
+    stroke-width="2"
+    stroke-linejoin="round"
+    vector-effect="non-scaling-stroke"></path>
+
+  {
+    markerIndex > 0 && (
+      <g>
+        <line
+          x1={x(markerIndex)}
+          y1={0}
+          x2={x(markerIndex)}
+          y2={height}
+          stroke="var(--color-rule-strong)"
+          stroke-width="1"
+          stroke-dasharray="3 4"
+          vector-effect="non-scaling-stroke"></line>
+      </g>
+    )
+  }
+
+  <circle
+    cx={x(points.length - 1)}
+    cy={y(last?.value ?? 0)}
+    r="3.5"
+    fill="var(--color-rise)"
+    vector-effect="non-scaling-stroke"></circle>
+</svg>
+
+<!--
+  El eje se dibuja en HTML y no en el SVG porque `preserveAspectRatio="none"`
+  deformaría el texto. Antes la sparkline no tenía ninguna referencia numérica:
+  era una línea sin contexto del que deducir nada.
+-->
+<div
+  class="mt-2 flex items-baseline justify-between gap-2 text-[0.6875rem] tabular-nums text-muted"
+>
+  <span class="min-w-0">
+    <!-- En móvil el año basta: el mes y el día no caben sin partirse. -->
+    <span class="xl:hidden">{first ? yearOf(first.period) : ''}</span>
+    <span class="hidden xl:inline">{first ? periodLabel(first.period) : ''}</span>
+    <span class="px-1.5 font-mono text-ink-soft">{first ? fmt(first.value) : ''}</span>
+  </span>
+
+  {
+    markerIndex > 0 && (
+      <span class="shrink-0 text-[0.5625rem] tracking-[0.1em] whitespace-nowrap uppercase">
+        1 jun 2018
+      </span>
+    )
+  }
+
+  <span class="min-w-0 text-right">
+    <span class="xl:hidden">{last ? yearOf(last.period) : ''}</span>
+    <span class="hidden xl:inline">{last ? periodLabel(last.period) : ''}</span>
+    <span class="pl-1.5 font-mono text-ink">{last ? fmt(last.value) : ''}</span>
+  </span>
+</div>

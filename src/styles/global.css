@@ -1,0 +1,704 @@
+/* ==========================================================================
+   España, en datos — sistema visual
+   Tailwind CSS v4. El sistema de diseño vive aquí como tokens `@theme`, no
+   como clases propias: los componentes consumen utilidades (text-ink,
+   border-rule, font-display…) y nunca redefinen estilos a mano.
+
+   Tema oscuro por defecto, con alternativa clara conmutable.
+
+   Paleta: negro carbón profundo con un único acento marfil. El acento no
+   es decorativo: es el color con el que se dibujan las gráficas y las cifras
+   destacadas, de modo que el ojo encuentra el dato antes que el adorno.
+   Contraste verificado en tema oscuro (WCAG AA) y tema claro.
+   ========================================================================== */
+
+@import 'tailwindcss';
+
+/* ── Tokens: tema oscuro (por defecto) ──────────────────────────────────── */
+
+@theme {
+  /* Superficies: de más profunda a más elevada. */
+  --color-void: #07090c;
+  --color-canvas: #0b0e13;
+  --color-surface: #12161d;
+  --color-surface-raised: #1a1f28;
+  --color-card: #141922;
+
+  /* Tinta */
+  --color-ink: #f2f5f9;
+  --color-ink-soft: #c7cfda;
+  --color-muted: #8f9bab;
+
+  /* Acento marfil: grafías, cifras destacadas, foco */
+  --color-accent: #e8e4d9;
+  --color-accent-soft: #232833;
+  --color-accent-ink: #0b0e13;
+
+  /* Líneas. Sobre fondo oscuro, translúcidas: se adaptan al panel que haya
+     debajo sin tener que declarar dos versiones de cada borde. */
+  --color-rule: #222833;
+  --color-rule-strong: #333c4a;
+
+  /* Tendencia. Siempre acompañado de flecha y palabra, nunca color a secas. */
+  --color-rise: #5fd3b0;
+  --color-rise-bg: #10241f;
+  --color-fall: #f0a48c;
+  --color-fall-bg: #2a1a15;
+
+  /* Tipografía */
+  --font-display: 'Newsreader', 'Iowan Old Style', Georgia, serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  /* Escala tipográfica. Los titulares suben respecto a la versión anterior:
+     el h1 llega a 6,5rem en pantallas anchas. */
+  --text-hero: clamp(3rem, 9.5vw, 6.5rem);
+  --text-hero--line-height: 0.98;
+  --text-hero--letter-spacing: -0.03em;
+  --text-title: clamp(2.25rem, 5vw, 3.75rem);
+  --text-title--line-height: 1.04;
+  --text-title--letter-spacing: -0.025em;
+  --text-subtitle: clamp(1.45rem, 2.6vw, 2rem);
+  --text-subtitle--line-height: 1.2;
+  --text-subtitle--letter-spacing: -0.015em;
+  --text-figure: clamp(2.5rem, 5vw, 4rem);
+  --text-figure--line-height: 1;
+  --text-figure--letter-spacing: -0.03em;
+  --text-lede: clamp(1.15rem, 2vw, 1.5rem);
+  --text-lede--line-height: 1.5;
+  --text-body: 1.0625rem;
+  --text-body--line-height: 1.7;
+
+  /* Retícula y ritmo */
+  --spacing-page: 84rem;
+  --spacing-gutter: clamp(1.25rem, 4vw, 3.5rem);
+  /* Espaciado de sección generoso: la página tiene que respirar. */
+  --spacing-section: clamp(6rem, 12vh, 10rem);
+  --radius-card: 1.25rem;
+  --radius-shell: 2rem;
+
+  /* Movimiento. Curvas con masa: nada de `linear` ni `ease-in-out`. */
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* ── Tokens: tema claro ─────────────────────────────────────────────────── */
+
+:root[data-theme='light'] {
+  --color-void: #e8e6e0;
+  --color-canvas: #f7f6f3;
+  --color-surface: #fffefb;
+  --color-surface-raised: #ffffff;
+  --color-card: #ffffff;
+
+  --color-ink: #14171c;
+  --color-ink-soft: #333941;
+  --color-muted: #5d6672;
+
+  --color-accent: #1a4d8f;
+  --color-accent-soft: #dce7f4;
+  --color-accent-ink: #ffffff;
+
+  --color-rule: #e0ddd6;
+  --color-rule-strong: #c3bfb5;
+
+  --color-rise: #14715a;
+  --color-rise-bg: #d8f0e7;
+  --color-fall: #9c3a1c;
+  --color-fall-bg: #fbe3da;
+}
+
+/* En tema claro la sombra ya no aporta contraste: se apoya en el borde. */
+:root[data-theme='light'] {
+  --shadow-plate: 0 1px 2px rgb(20 23 28 / 0.06);
+  --shadow-lift: 0 2px 4px rgb(20 23 28 / 0.04), 0 12px 28px rgb(20 23 28 / 0.08);
+}
+
+:root {
+  /* Tema oscuro: sombras casi imperceptibles, la profundidad la da el borde. */
+  --shadow-plate: 0 1px 0 rgb(255 255 255 / 0.03) inset;
+  --shadow-lift: 0 1px 0 rgb(255 255 255 / 0.04) inset,
+    0 18px 40px -18px rgb(0 0 0 / 0.7);
+}
+
+/* ── Base ───────────────────────────────────────────────────────────────── */
+
+@layer base {
+  *,
+  ::before,
+  ::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+    /* Reserva el espacio de la barra de desplazamiento para que el cambio
+       de tema no desplace el contenido. */
+    scrollbar-gutter: stable;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    ::before,
+    ::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  body {
+    margin: 0;
+    background: var(--color-canvas);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: var(--text-body);
+    line-height: var(--text-body--line-height);
+    -webkit-font-smoothing: antialiased;
+    /* Cambio de tema con transición, salvo si el usuario pide menos movimiento. */
+    transition:
+      background-color 400ms var(--ease-out-expo),
+      color 400ms var(--ease-out-expo);
+  }
+
+  /*
+   * Textura de fondo: dos orbes muy tenues, fijos y sin eventos de puntero.
+   * `position: fixed` es deliberado — un overlay ligado al scroll provoca
+   * repintados continuos en móvil.
+   */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(60rem 40rem at 12% -10%, rgb(232 228 217 / 0.05), transparent 60%),
+      radial-gradient(50rem 34rem at 95% 8%, rgb(95 211 176 / 0.04), transparent 62%);
+  }
+
+  :root[data-theme='light'] body::before {
+    background:
+      radial-gradient(60rem 40rem at 12% -10%, rgb(26 77 143 / 0.05), transparent 60%),
+      radial-gradient(50rem 34rem at 95% 8%, rgb(20 113 90 / 0.04), transparent 62%);
+  }
+
+  h1,
+  h2,
+  h3,
+  h4 {
+    margin: 0;
+    font-family: var(--font-display);
+    font-weight: 400;
+    line-height: 1.04;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+  }
+
+  p {
+    margin: 0;
+  }
+
+  a {
+    color: inherit;
+    text-decoration-color: var(--color-rule-strong);
+    text-decoration-thickness: 1px;
+    text-underline-offset: 0.22em;
+    transition: color 240ms var(--ease-out-expo);
+  }
+
+  a:hover {
+    text-decoration-color: var(--color-accent);
+    text-decoration-thickness: 2px;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+
+  table {
+    border-collapse: collapse;
+  }
+
+  caption {
+    text-align: left;
+  }
+
+  /* El scrollbar sigue al tema para no romper la sensación de superficie. */
+  * {
+    scrollbar-color: var(--color-rule-strong) transparent;
+  }
+}
+
+/* ── Utilidades compuestas ─────────────────────────────────────────────── */
+
+@utility page-shell {
+  width: min(100% - var(--spacing-gutter) * 2, var(--spacing-page));
+  margin-inline: auto;
+}
+
+@utility section-block {
+  /*
+   * Antes: `padding-block` uniforme + el padding interno de las tarjetas
+   * generaba dos bandas vacías seguidas. Ahora el borde va pegado al contenido
+   * y el aire se concentra arriba, con un ritmo algo menor.
+   */
+  border-top: 1px solid var(--color-rule);
+  padding-top: calc(var(--spacing-section) * 0.62);
+  padding-bottom: calc(var(--spacing-section) * 0.72);
+}
+
+@utility eyebrow {
+  /*
+   * `w-fit` es imprescindible: como hijo de un contenedor `grid`, el
+   * `justify-self` por defecto (`stretch`) estiraba la píldora a todo el
+   * ancho de la columna y la hacía parecer un campo de formulario.
+   */
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  width: fit-content;
+  max-width: 100%;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 999px;
+  padding: 0.3rem 0.75rem;
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+@utility table-numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+@utility prose-measure {
+  max-width: 68ch;
+}
+
+/*
+ * 68 ch es la medida de un párrafo. A un titular de 3,75 rem lo partía en
+ * tres líneas en 1440 px.
+ *
+ * La unidad NO puede ser `ch`: `ch` se resuelve contra el tamaño de fuente
+ * del elemento que lleva la utilidad, y aquí es el cuerpo de texto, no el
+ * titular. Con 24ch sobre un contenedor de 1,0625 rem el titular quedaba
+ * limitado a unos 350 px y se partía en cinco líneas. En `rem` la medida es
+ * independiente del contexto tipográfico.
+ */
+@utility title-measure {
+  max-width: min(100%, 44rem);
+}
+
+@utility chart-canvas {
+  position: relative;
+  height: clamp(20rem, 46vh, 30rem);
+}
+
+@utility ledger-target {
+  &:target {
+    background: var(--color-accent-soft);
+  }
+}
+
+/*
+ * Separación entre el bloque de cabecera de una sección y su contenido.
+ * Antes eran 12 rejillas (mb-12) sobre tarjetas que ya tenían su propio
+ * padding: el resultado era aire sin contenido.
+ */
+@utility section-head {
+  display: grid;
+  gap: 1.25rem;
+  margin-bottom: 3rem;
+}
+
+@utility data-thead {
+  border-bottom: 1px solid var(--color-rule-strong);
+  font-weight: 600;
+}
+
+@utility data-cell {
+  border-bottom: 1px solid var(--color-rule);
+  padding: 0.75rem 1rem;
+}
+
+/*
+ * Doble bisel: contenedor exterior (bandeja) + núcleo interior (chapa).
+ * Las dos curvas quedan concéntricas: el radio interior es el exterior menos
+ * el grosor del bisel.
+ */
+@utility plate {
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-shell);
+  background: var(--color-surface);
+  padding: 0.375rem;
+  box-shadow: var(--shadow-plate);
+  transition:
+    border-color 400ms var(--ease-out-expo),
+    box-shadow 400ms var(--ease-out-expo),
+    transform 400ms var(--ease-out-expo);
+}
+
+@utility plate-core {
+  border-radius: calc(var(--radius-shell) - 0.375rem);
+  background: var(--color-card);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.05);
+}
+
+@utility plate-lift {
+  &:hover {
+    border-color: var(--color-rule-strong);
+    box-shadow: var(--shadow-lift);
+    transform: translateY(-2px);
+  }
+}
+
+/* Botón: pastilla completa, con el icono anidado en su propio círculo. */
+@utility button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.625rem;
+  min-height: 3rem;
+  padding: 0.5rem 0.5rem 0.5rem 1.5rem;
+  border: 1px solid var(--color-rule-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-ink);
+  font-weight: 600;
+  font-size: 0.9375rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition:
+    background-color 400ms var(--ease-out-expo),
+    border-color 400ms var(--ease-out-expo),
+    color 400ms var(--ease-out-expo),
+    transform 200ms var(--ease-spring);
+
+  &:hover {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+
+  /* Presión física al pulsar. */
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* Ícono dentro del botón: círculo propio que reacciona al hover del padre. */
+@utility button-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-accent-ink);
+  transition:
+    transform 500ms var(--ease-spring),
+    background-color 400ms var(--ease-out-expo);
+}
+
+@utility button-solid {
+  background: var(--color-accent);
+  border-color: var(--color-accent);
+  color: var(--color-accent-ink);
+
+  .button-icon {
+    background: color-mix(in srgb, var(--color-accent-ink) 18%, transparent);
+    color: var(--color-accent-ink);
+  }
+
+  &:hover {
+    background: var(--color-ink);
+    border-color: var(--color-ink);
+    color: var(--color-canvas);
+  }
+}
+
+/* ── Barra de navegación ────────────────────────────────────────────────── */
+
+/*
+ * Isla flotante: bandeja exterior + núcleo interior (doble bisel). Con formas
+ * de píldora las dos curvas siguen siendo concéntricas sin cálculo, porque
+ * ambos radios son la mitad de su altura.
+ *
+ * `backdrop-filter` vive aquí y solo aquí dentro de la barra: es un elemento
+ * fijo. Aplicado a contenido con scroll provocaría repintados continuos.
+ */
+@utility island-tray {
+  border: 1px solid color-mix(in srgb, var(--color-rule) 80%, transparent);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-surface) 74%, transparent);
+  padding: 0.3125rem;
+  box-shadow: var(--shadow-lift);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  backdrop-filter: blur(20px) saturate(150%);
+  transition:
+    background-color 500ms var(--ease-out-expo),
+    border-color 500ms var(--ease-out-expo);
+
+  /* Al desplazarse, la isla se opaca y afila el borde: deja de flotar sobre
+     el texto y pasa a behaving como una superficie. */
+  [data-scrolled='true'] & {
+    border-color: var(--color-rule-strong);
+    background: color-mix(in srgb, var(--color-surface) 92%, transparent);
+  }
+}
+
+@utility island-core {
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-card) 58%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.06);
+
+  [data-scrolled='true'] & {
+    background: color-mix(in srgb, var(--color-card) 88%, transparent);
+  }
+}
+
+/*
+ * Enlace de navegación. La píldora de fondo es una capa `::before` que crece
+ * desde el centro: solo se animan `transform` y `opacity`, nunca `width`.
+ * El contenido va en un hijo posicionado para quedar por encima de la capa.
+ */
+@utility nav-link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  letter-spacing: -0.005em;
+  color: var(--color-muted);
+  text-decoration: none;
+  transition: color 350ms var(--ease-out-expo);
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    opacity: 0;
+    transform: scale(0.84);
+    transition:
+      transform 520ms var(--ease-spring),
+      opacity 300ms var(--ease-out-expo);
+  }
+
+  &:hover {
+    color: var(--color-ink);
+  }
+
+  &:hover::before,
+  &:focus-visible::before {
+    opacity: 1;
+    transform: scale(1);
+  }
+
+  /* Pulso físico al pulsar. */
+  &:active::before {
+    transform: scale(0.95);
+  }
+
+  /* Página actual: la isla permanece encendida. `aria-current` sigue siendo la
+     única fuente de verdad del estado; el estilo solo lo acompaña. */
+  &[aria-current='page'] {
+    color: var(--color-ink);
+    font-weight: 600;
+  }
+
+  &[aria-current='page']::before {
+    opacity: 1;
+    transform: scale(1);
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  }
+}
+
+/* Acción secundaria de la barra:xml de cambios. Mismo lenguaje que los
+   botones, a escala de navegación. */
+@utility nav-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.3125rem 0.3125rem 0.3125rem 0.875rem;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-ink-soft);
+  text-decoration: none;
+  transition:
+    border-color 400ms var(--ease-out-expo),
+    color 400ms var(--ease-out-expo);
+
+  &:hover {
+    border-color: var(--color-rule-strong);
+    color: var(--color-ink);
+  }
+}
+
+/* Icono anidado: círculo propio que se desplaza dentro de la acción. */
+@utility nav-action-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.625rem;
+  height: 1.625rem;
+  border-radius: 999px;
+  background: var(--color-accent-soft);
+  color: var(--color-ink-soft);
+  transition:
+    transform 500ms var(--ease-spring),
+    background-color 400ms var(--ease-out-expo);
+
+  .nav-action:hover & {
+    transform: translate(0.125rem, -0.0625rem) scale(1.06);
+  }
+}
+
+/* Hamburguesa: dos líneas que comparten el mismo centro. Cerradas forman una
+   raya; abiertas rotan 45° en sentidos opuestos y forman una X exacta. */
+@utility burger {
+  position: relative;
+  display: block;
+  flex: none;
+  width: 1.125rem;
+  height: 0.875rem;
+}
+
+@utility burger-bar {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  width: 100%;
+  height: 1.5px;
+  margin-top: -0.75px;
+  border-radius: 999px;
+  background: currentColor;
+  transition: transform 500ms var(--ease-spring);
+}
+
+@utility burger-bar-top {
+  transform: translateY(-3.5px);
+
+  [aria-expanded='true'] & {
+    transform: rotate(45deg);
+  }
+}
+
+@utility burger-bar-bottom {
+  transform: translateY(3.5px);
+
+  [aria-expanded='true'] & {
+    transform: rotate(-45deg);
+  }
+}
+
+/*
+ * Velo del menú móvil. `visibility` en vez de `display` permite la transición
+ * de opacidad y, sobre todo, saca los enlaces del orden de tabulación cuando
+ * el menú está cerrado sin necesidad de `inert` ni de JavaScript adicional.
+ */
+@utility menu-veil {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: grid;
+  align-content: space-between;
+  padding: 7rem 1.5rem 2.5rem;
+  background: color-mix(in srgb, var(--color-canvas) 88%, transparent);
+  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  backdrop-filter: blur(28px) saturate(140%);
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 450ms var(--ease-out-expo),
+    visibility 0s linear 450ms;
+
+  &[data-open='true'] {
+    opacity: 1;
+    visibility: visible;
+    transition-delay: 0s;
+  }
+}
+
+/* Entrada del menú: sube desde una caja invisible. El escalonado se marca con
+   utilidades `delay-*` de Tailwind, sin CSS propio por componente. */
+@utility menu-entry {
+  opacity: 0;
+  transform: translateY(3rem);
+  transition:
+    opacity 650ms var(--ease-out-expo),
+    transform 800ms var(--ease-spring);
+
+  [data-open='true'] & {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/*
+ * Encaje interior: tercer nivel de bisel para los bloques de datos que viven
+ * dentro de una tarjeta (cifras de un indicador, tabla de la gráfica). Comparte
+ * lenguaje con la tarjeta que lo contiene: mismo hairline, mismo radio menor.
+ */
+@utility card-well {
+  border: 1px solid var(--color-rule);
+  border-radius: var(--radius-card);
+  background: color-mix(in srgb, var(--color-surface-raised) 55%, transparent);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.04);
+}
+
+@utility chip {
+  display: inline-flex;
+  align-items: center;
+  min-height: 2.75rem;
+  padding: 0.5rem 1.125rem;
+  border: 1px solid var(--color-rule);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--color-muted);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition:
+    background-color 350ms var(--ease-out-expo),
+    border-color 350ms var(--ease-out-expo),
+    color 350ms var(--ease-out-expo),
+    transform 250ms var(--ease-spring);
+
+  &:hover {
+    border-color: var(--color-rule-strong);
+    color: var(--color-ink);
+  }
+
+  &:active {
+    transform: scale(0.97);
+  }
+}
+
+/* Estado seleccionado gestionado con aria-pressed, no con clases de JS. */
+@utility chip-pressed {
+  &[aria-pressed='true'] {
+    background: var(--color-accent);
+    border-color: var(--color-accent);
+    color: var(--color-accent-ink);
+  }
+}

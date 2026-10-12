@@ -1,0 +1,210 @@
+---
+import type { Indicator } from '../types';
+import { CATEGORIES } from '../data/indicators';
+import { formatNumber, periodLabel } from '../lib/indicators';
+
+/**
+ * Gráfica de la serie completa de un indicador, con la tabla de datos como
+ * alternativa accesible.
+ *
+ * Es el mismo renderizado que el explorador de la portada, sin selector: aquí
+ * la serie ya está fijada por la ficha. El código de la gráfica vive en
+ * `scripts/series-chart.ts` para que ambos sitios se comporten igual.
+ *
+ * Props:
+ * - `indicator`: el indicador ya validado.
+ * - `headingLevel`: nivel del encabezado de la figura.
+ * - `description`: párrafo introductorio opcional.
+ * - `withTable`: si es `false`, omite la tabla (solo cuando la ficha ya la
+ *   incluye por su cuenta). Por defecto `true`.
+ */
+interface Props {
+  indicator: Indicator;
+  headingLevel?: 'h2' | 'h3';
+  description?: string;
+  withTable?: boolean;
+}
+
+const { indicator, headingLevel = 'h2', description, withTable = true } = Astro.props;
+
+const Heading = headingLevel;
+
+const categoryName = CATEGORIES.find((category) => category.id === indicator.category)?.name;
+
+const payload = {
+  id: indicator.id,
+  title: indicator.title,
+  unit: indicator.unit,
+  decimals: indicator.decimals,
+  baselinePeriod: indicator.baselinePeriod,
+  currentPeriod: indicator.currentPeriod,
+  sourceUrl: indicator.source.url,
+  sourceShort: indicator.source.name.split('—')[0]?.trim() ?? indicator.source.name,
+  category: categoryName ?? indicator.category,
+  es: indicator.series.es.map((point) => ({ period: point.period, value: point.value })),
+  eu: indicator.series.eu?.map((point) => ({ period: point.period, value: point.value })) ?? null,
+};
+
+const euMap = new Map((indicator.series.eu ?? []).map((point) => [point.period, point.value]));
+
+const tableClasses =
+  'w-full text-[0.92rem] [&_caption]:pb-3 [&_caption]:text-[0.9rem] [&_caption]:text-muted [&_th]:px-3 [&_th]:py-2 [&_td]:px-3 [&_td]:py-2 [&_th]:text-left [&_td]:text-left';
+const detailsClasses =
+  'rounded-card border border-rule bg-surface px-5 py-3 transition-colors duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-rule-strong [&[open]>summary]:mb-4 [&>summary]:flex [&>summary]:min-h-11 [&>summary]:cursor-pointer [&>summary]:items-center [&>summary]:gap-2 [&>summary]:font-semibold';
+
+/* Resumen textual de la gráfica. Se escribe en el servidor para que la
+   alternativa accesible exista aunque Chart.js no llegue a cargarse. */
+const first = indicator.series.es[0];
+const last = indicator.series.es[indicator.series.es.length - 1];
+const euLast = indicator.series.eu?.[(indicator.series.eu?.length ?? 0) - 1];
+
+const summary = [
+  `${indicator.title}, en ${indicator.unit}. Serie de ${periodLabel(first?.period ?? '')} a ${periodLabel(
+    last?.period ?? '',
+  )}: de ${formatNumber(first?.value ?? 0, indicator.decimals)} a ${formatNumber(
+    last?.value ?? 0,
+    indicator.decimals,
+  )}.`,
+  euLast
+    ? `En la misma fecha, la media de la Unión Europea es de ${formatNumber(
+        euLast.value,
+        indicator.decimals,
+      )}.`
+    : '',
+]
+  .filter(Boolean)
+  .join(' ');
+---
+
+<figure class="plate" data-series-figure>
+  <div class="plate-core grid gap-6 p-6 lg:p-8">
+  <Heading class="text-subtitle">Evolución de la serie</Heading>
+  {description && <p class="max-w-[68ch] leading-relaxed text-muted">{description}</p>}
+
+  <p
+    class="max-w-[70ch] text-[0.95rem] leading-relaxed text-muted"
+    data-series-status
+    id={`status-${indicator.id}`}
+  >
+    {summary}
+  </p>
+
+  <div class="chart-canvas">
+    <canvas
+      data-series-canvas
+      data-series-id={indicator.id}
+      role="img"
+      aria-describedby={`status-${indicator.id}`}
+      aria-label={`Gráfica de la evolución de ${indicator.title}. Los valores exactos están disponibles en la tabla de datos de esta ficha.`}
+    ></canvas>
+  </div>
+
+  <figcaption class="flex flex-wrap gap-x-6 gap-y-2 text-[0.9rem] text-muted">
+    <span>{categoryName} · {indicator.title}</span>
+    <span>Unidad: {indicator.unit}</span>
+    <span>Serie: {indicator.baselineLabel} frente a {indicator.currentLabel}</span>
+  </figcaption>
+
+  {
+    withTable && (
+      <details class={detailsClasses}>
+        <summary>Ver los {indicator.series.es.length} datos de la serie</summary>
+        <div class="overflow-x-auto">
+          <table class={tableClasses}>
+            <caption class="text-left text-muted">
+              {indicator.title}. Unidad: {indicator.unit}. Fuente: {indicator.source.name}.
+            </caption>
+            <thead>
+              <tr>
+                <th scope="col" class="data-thead data-cell">Periodo</th>
+                <th scope="col" class="data-thead data-cell table-numeric">España</th>
+                {indicator.series.eu && (
+                  <th scope="col" class="data-thead data-cell table-numeric">
+                    Unión Europea
+                  </th>
+                )}
+              </tr>
+            </thead>
+            <tbody>
+              {indicator.series.es.map((point) => {
+                const eu = euMap.get(point.period);
+                return (
+                  <tr>
+                    <th scope="row" class="data-cell">{periodLabel(point.period)}</th>
+                    <td class="data-cell table-numeric">
+                      {formatNumber(point.value, indicator.decimals)}
+                    </td>
+                    {indicator.series.eu && (
+                      <td class="data-cell table-numeric">
+                        {eu === undefined ? '—' : formatNumber(eu, indicator.decimals)}
+                      </td>
+                    )}
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </details>
+    )
+  }
+  </div>
+</figure>
+
+<script
+  is:inline
+  type="application/json"
+  data-series-payload
+  data-series-id={indicator.id}
+  set:html={JSON.stringify(payload)}
+/>
+
+<script>
+  import {
+    mountSeriesChart,
+    onFirstVisible,
+    prefersReducedMotion,
+    type SeriesPayload,
+  } from '../scripts/series-chart';
+
+  // Enganche por atributos, no por `document.currentScript`: Astro empaqueta y
+  // agrupa los scripts, así que el orden de ejecución no es el del HTML.
+  const mounted: Array<{
+    canvas: HTMLCanvasElement;
+    payload: SeriesPayload;
+    handle: Awaited<ReturnType<typeof mountSeriesChart>> | null;
+  }> = [];
+
+  const canvases = document.querySelectorAll<HTMLCanvasElement>('[data-series-canvas]');
+
+  for (const canvas of canvases) {
+    const id = canvas.dataset.seriesId;
+    const payloadEl = id
+      ? document.querySelector<HTMLScriptElement>(`[data-series-payload][data-series-id="${id}"]`)
+      : null;
+    if (!id || !payloadEl) continue;
+
+    const payload = JSON.parse(payloadEl.textContent ?? '{}') as SeriesPayload;
+    const entry: (typeof mounted)[number] = { canvas, payload, handle: null };
+    mounted.push(entry);
+
+    onFirstVisible(canvas, () => {
+      void mountSeriesChart(canvas, payload, { view: 'line', compareEu: false }, {
+        reducedMotion: prefersReducedMotion(),
+      }).then((handle) => {
+        entry.handle = handle;
+      });
+    });
+  }
+
+  // La paleta de la gráfica se lee del tema activo, así que al conmutar hay
+  // que destruir y recrear: Chart.js no admite cambiar los colores en sitio.
+  window.addEventListener('tema:cambiado', () => {
+    for (const { canvas, payload, handle } of mounted) {
+      handle?.destroy();
+      void mountSeriesChart(canvas, payload, { view: 'line', compareEu: false }, {
+        reducedMotion: prefersReducedMotion(),
+      });
+    }
+  });
+</script>

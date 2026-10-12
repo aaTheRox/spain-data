@@ -1,0 +1,174 @@
+---
+import BaseLayout from '../../layouts/BaseLayout.astro';
+import SiteChrome from '../../components/SiteChrome.astro';
+import SourceLink from '../../components/SourceLink.astro';
+import TrendTag from '../../components/TrendTag.astro';
+import SeriesChart from '../../components/SeriesChart.astro';
+import { getIndicators, formatNumber } from '../../lib/indicators';
+import { CATEGORIES, DATA_REVIEWED_AT } from '../../data/indicators';
+import { SITE } from '../../data/site';
+
+export function getStaticPaths() {
+  return getIndicators().map((indicator) => ({
+    params: { id: indicator.id },
+    props: { indicator },
+  }));
+}
+
+const { indicator } = Astro.props;
+const category = CATEGORIES.find((item) => item.id === indicator.category);
+
+const changeKindLabel: Record<string, string> = {
+  'percentage-point': 'variación en puntos porcentuales',
+  relative: 'variación relativa',
+  absolute: 'variación absoluta en la unidad del indicador',
+};
+
+const reviewLabel = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' }).format(
+  new Date(DATA_REVIEWED_AT),
+);
+
+const structuredData = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Indicadores', item: `${SITE.url}/` },
+      {
+        '@type': 'ListItem',
+        position: 2,
+        name: indicator.title,
+        item: `${SITE.url}/indicadores/${indicator.id}/`,
+      },
+    ],
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Dataset',
+    name: indicator.title,
+    description: indicator.summary,
+    creator: { '@type': 'Organization', name: indicator.source.name },
+    distribution: [
+      {
+        '@type': 'DataDownload',
+        encodingFormat: 'text/html',
+        contentUrl: indicator.source.url,
+      },
+    ],
+    temporalCoverage: `${indicator.baselineLabel}/${indicator.currentLabel}`,
+    dateModified: DATA_REVIEWED_AT,
+    variableMeasured: indicator.unit,
+  },
+];
+
+---
+
+<BaseLayout
+  title={indicator.title}
+  description={`${indicator.summary} Comparación entre ${indicator.baselineLabel} y ${indicator.currentLabel}. Fuente: ${indicator.source.name}.`}
+  path={`/indicadores/${indicator.id}/`}
+  structuredData={structuredData}
+>
+  <SiteChrome path="/">
+    <article class="page-shell">
+      <nav aria-label="Miga de pan" class="pt-[clamp(3rem,9vh,6rem)]">
+        <ol class="flex flex-wrap gap-2 text-[0.9rem] tabular-nums text-muted">
+          <li><a href="/">Indicadores</a></li>
+          <li aria-hidden="true">/</li>
+          <li aria-current="page">{category?.name}</li>
+        </ol>
+      </nav>
+
+      <header class="pt-10">
+        <p class="eyebrow">{category?.name}</p>
+        <h1 class="mt-8 max-w-[20ch] text-hero">{indicator.title}</h1>
+        <p class="mt-8 max-w-[58ch] text-lede text-ink-soft">{indicator.summary}</p>
+      </header>
+
+      <div class="grid gap-14 pt-16 pb-[var(--spacing-section)]">
+        <section aria-labelledby="titulo-comparativa">
+          <h2 id="titulo-comparativa" class="sr-only">Comparativa de periodos</h2>
+          <div class="plate">
+            <div
+              class="plate-core grid gap-8 p-6 lg:grid-cols-3 lg:gap-6 lg:p-9"
+            >
+              <div>
+                <p class="text-[0.6875rem] tracking-[0.14em] uppercase text-muted">
+                  Periodo inicial
+                </p>
+                <p class="mt-2 text-figure tabular-nums">
+                  {formatNumber(indicator.baselineValue, indicator.decimals)}
+                </p>
+                <p class="mt-2 text-[0.95rem] text-muted">{indicator.baselineLabel}</p>
+              </div>
+              <div>
+                <p class="text-[0.6875rem] tracking-[0.14em] uppercase text-muted">
+                  Periodo actual
+                </p>
+                <p class="mt-2 text-figure tabular-nums">
+                  {formatNumber(indicator.currentValue, indicator.decimals)}
+                </p>
+                <p class="mt-2 text-[0.95rem] text-muted">{indicator.currentLabel}</p>
+              </div>
+              <div>
+                <p class="text-[0.6875rem] tracking-[0.14em] uppercase text-muted">
+                  {changeKindLabel[indicator.change.kind] ?? 'variación'}
+                </p>
+                <p class="mt-2 text-figure tabular-nums">{indicator.change.absoluteLabel}</p>
+                <p class="mt-2 text-[0.95rem] leading-relaxed text-muted">
+                  El indicador {indicator.change.verdict} según su definición.
+                  <TrendTag indicator={indicator} />
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <p class="mt-6 max-w-[68ch] leading-relaxed text-[0.95rem] text-muted">
+            Unidad: {indicator.unit}. Serie: {indicator.baselineLabel} frente a{' '}
+            {indicator.currentLabel}.
+            {
+              indicator.series.eu
+                ? ' Incluye la serie equivalente de la Unión Europea en la tabla de datos.'
+                : ' No hay serie de la Unión Europea comparable para este indicador.'
+            }
+          </p>
+        </section>
+
+        <SeriesChart
+          indicator={indicator}
+          description="La línea muestra la serie completa, no solo los dos periodos comparados arriba. Los valores exactos están en la tabla desplegable."
+        />
+
+        <div class="grid max-w-[68ch] gap-12">
+          <div>
+            <h2 class="text-subtitle">Metodología de la comparación</h2>
+            <p class="mt-4 leading-relaxed text-ink-soft">{indicator.methodology}</p>
+          </div>
+          <div>
+            <h2 class="text-subtitle">Contexto y límites</h2>
+            <p class="mt-4 leading-relaxed text-ink-soft">{indicator.context}</p>
+          </div>
+          <div>
+            <h2 class="text-subtitle">Fuente</h2>
+            <p class="mt-4 leading-relaxed text-ink-soft">
+              {indicator.source.name}. Selección de la serie: <code>{indicator.source.selection}</code>.
+              Serie actualizada en la fuente el {indicator.source.datasetUpdatedAt}; ficha revisada
+              el {reviewLabel}.
+            </p>
+            <p class="mt-4">
+              <SourceLink
+                href={indicator.source.url}
+                label={`Abrir la tabla oficial en ${indicator.source.name.split('—')[0]?.trim()}`}
+              />
+            </p>
+          </div>
+        </div>
+
+        <p class="text-[0.95rem] text-muted">
+          <a href="/#explorador">Volver al listado de indicadores</a> ·
+          <a href="/metodologia/">Metodología y criterios de selección</a>
+        </p>
+      </div>
+    </article>
+  </SiteChrome>
+</BaseLayout>

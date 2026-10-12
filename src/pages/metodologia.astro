@@ -1,0 +1,235 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteChrome from '../components/SiteChrome.astro';
+import SourceLink from '../components/SourceLink.astro';
+import { getPublishedIndicators } from '../lib/indicators';
+import { DATA_REVIEWED_AT, POLITICAL_BASELINE, CATEGORIES } from '../data/indicators';
+import { PENDING, SITE } from '../data/site';
+
+const indicators = getPublishedIndicators();
+const reviewLabel = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' }).format(
+  new Date(DATA_REVIEWED_AT),
+);
+
+const sources = [...new Set(indicators.map((indicator) => indicator.source.name))].sort();
+
+/* Un solo lugar donde se declara la anatomía de las tablas de esta página. */
+const tableClasses =
+  'w-full text-[0.92rem] [&_caption]:pb-3 [&_caption]:text-[0.9rem] [&_caption]:text-muted [&_th]:px-3 [&_th]:py-2 [&_td]:px-3 [&_td]:py-2 [&_th]:text-left [&_td]:text-left';
+const headCell = 'data-thead data-cell';
+const bodyCell = 'data-cell';
+const listClasses = 'grid list-none gap-2 pl-0 [&_li]:text-[0.98rem]';
+---
+
+<BaseLayout
+  title="Metodología y fuentes"
+  description="Criterios de selección de indicadores, regla de comparación entre periodos, fuentes primarias enlazadas y limitaciones declaradas."
+  path="/metodologia/"
+>
+  <SiteChrome path="/metodologia/">
+    <article class="page-shell">
+      <header class="pt-[clamp(3rem,9vh,6rem)]">
+        <p class="eyebrow">Metodología</p>
+        <h1 class="mt-8 max-w-[18ch] text-hero">Cómo se eligen y se comparan las cifras</h1>
+        <p class="mt-8 max-w-[54ch] text-lede text-ink-soft">
+          Esta página se publica con una regla sencilla: solo aparece un dato si se ha comprobado en
+          una fuente oficial y se puede comparar consigo mismo. Todo lo demás queda fuera, con el
+          motivo escrito.
+        </p>
+      </header>
+
+      <div class="section-block grid max-w-[68ch] gap-10">
+        <div>
+          <h2 class="mt-4 text-subtitle">Regla de comparación de periodos</h2>
+          <p class="text-ink-soft">
+            La fecha de referencia política es el <strong>{POLITICAL_BASELINE}</strong>, el día en que
+            el Congreso aprobó la moción de censura al Gobierno de Mariano Rajoy. Para cada serie se
+            toma como periodo inicial el último dato oficial cerrado antes de esa fecha, y como
+            periodo actual el último dato publicado y disponible el {reviewLabel}.
+          </p>
+          <ul class:list={[listClasses, 'mt-5']}>
+            <li>Series anuales: el periodo inicial es 2017, el último año completo publicado antes de junio de 2018.</li>
+            <li>Series mensuales: el periodo inicial es mayo de 2018.</li>
+            <li>Series trimestrales: el periodo inicial es el primer trimestre de 2018.</li>
+          </ul>
+          <p class="mt-4 leading-relaxed text-ink-soft">
+            El periodo actual <strong>no es el mismo en todas las series</strong>, porque las fuentes
+            publican con desfases distintos. Cada ficha declara sus dos periodos de forma explícita
+            y la página nunca usa «antes» ni «ahora» como etiqueta.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="mt-4 text-subtitle">Cómo se expresa la variación</h2>
+          <ul class:list={[listClasses, 'mt-5']}>
+            <li>
+              <strong>Tipos y porcentajes:</strong> la diferencia se expresa en puntos porcentuales
+              (pp), no en porcentaje relativo.
+            </li>
+            <li>
+              <strong>Índices y magnitudes:</strong> se da la variación relativa en porcentaje
+              respecto al valor inicial.
+            </li>
+            <li>
+              <strong>Series en euros constantes:</strong> se declara siempre la base de precios. No
+              se comparan importes nominales sin advertir del efecto de la inflación.
+            </li>
+          </ul>
+          <p class="mt-4 leading-relaxed text-ink-soft">
+            Ningún indicador se describe como «mejora» solo porque suba o baje. El sentido se toma de
+            la definición declarada en cada ficha, y los indicadores cuyo sentido depende de un
+            valor de referencia se muestran sin veredicto.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="mt-4 text-subtitle">Comparación con la Unión Europea</h2>
+          <p class="text-ink-soft">
+            Solo se incluye una serie europea cuando existe una serie armonizada equivalente con el
+            mismo periodo, la misma unidad y la misma definición. Los países y las medias no se
+            eligen porque favorezcan una conclusión: se usa la media de los 27 Estados miembros,
+            cuando está disponible.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="mt-4 text-subtitle">Criterios de selección</h2>
+          <ul class:list={[listClasses, 'mt-5']}>
+            <li>Existencia de una serie oficial continua con datos en ambos extremos.</li>
+            <li>Metodología estable o documentada, con enlace a la definición del indicador.</li>
+            <li>Unidad y ámbito geográfico idénticos en los dos periodos comparados.</li>
+            <li>Posibilidad de consultar la tabla de origen sin herramientas propietarias.</li>
+          </ul>
+          <p class="mt-4 leading-relaxed text-ink-soft">
+            Los indicadores que no superan estos criterios se listan al final de esta página con el
+            motivo de su exclusión.
+          </p>
+        </div>
+
+        <div id="fuentes">
+          <h2 class="mt-4 text-subtitle">Fuentes</h2>
+          <p class="text-ink-soft">
+            Todas las cifras provienen del Statistical Data Warehouse de Eurostat, con metodología
+            armonizada. Cada indicador enlaza a la tabla concreta y anota los filtros aplicados.
+          </p>
+          <div class="mt-6 overflow-x-auto">
+            <table class={tableClasses}>
+              <caption class="text-left text-muted">
+                Series publicadas en esta versión del sitio
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col" class={headCell}>Indicador</th>
+                  <th scope="col" class={headCell}>Serie</th>
+                  <th scope="col" class={headCell}>Actualizada en la fuente</th>
+                </tr>
+              </thead>
+              <tbody>
+                {
+                  indicators.map((indicator) => (
+                    <tr>
+                      <th scope="row" class={bodyCell}>
+                        <a href={`/indicadores/${indicator.id}/`}>{indicator.title}</a>
+                      </th>
+                      <td class={bodyCell}>
+                        <code>{indicator.source.dataset}</code>
+                        <br />
+                        <SourceLink
+                          href={indicator.source.url}
+                          label={`Ver serie en ${indicator.source.name.split('—')[0]?.trim()}`}
+                        />
+                      </td>
+                      <td class={bodyCell}>
+                        <time datetime={indicator.source.datasetUpdatedAt}>
+                          {indicator.source.datasetUpdatedAt}
+                        </time>
+                      </td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+            </table>
+          </div>
+          <p class="mt-4 leading-relaxed text-ink-soft">
+            Series distintas en la fuente: {sources.length}. Ninguna cifra procede de un medio de
+            comunicación, de una encuesta privada o de una estimación propia.
+          </p>
+        </div>
+
+        <div>
+          <h2 class="mt-4 text-subtitle">Revisiones y límites</h2>
+          <ul class:list={[listClasses, 'mt-5']}>
+            <li>
+              Las series oficiales se revisan. Cuando una revisión altera el dato inicial o el
+              actual, la cifra publicada cambia y queda registrada en el{' '}
+              <a href="/actualizacion.xml">registro de actualización</a>.
+            </li>
+            <li>
+              El periodo de revisión de esta versión es el {reviewLabel}. Fuera de esa fecha puede
+              haber datos nuevos.
+            </li>
+            <li>
+              Comparar dos puntos no demuestra que una medida concreta haya producido el cambio.
+              Los factores de ciclo, la pandemia y las decisiones europeas afectan a varios países a
+              la vez.
+            </li>
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="mt-4 text-subtitle">Indicadores no publicados</h2>
+          <div class="plate mt-6">
+            <div class="plate-core p-6 lg:p-8">
+              <div class="overflow-x-auto">
+                <table class={tableClasses}>
+              <caption class="text-left text-muted">
+                Temas considerados y excluidos por falta de serie comparable verificada
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col" class={headCell}>Tema</th>
+                  <th scope="col" class={headCell}>Motivo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {
+                  PENDING.map((item) => (
+                    <tr>
+                      <th scope="row" class={bodyCell}>{item.topic}</th>
+                      <td class={bodyCell}>{item.reason}</td>
+                    </tr>
+                  ))
+                }
+              </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h2 class="mt-4 text-subtitle">Categorías</h2>
+          <ul class:list={[listClasses, 'mt-5']}>
+            {
+              CATEGORIES.map((category) => (
+                <li>
+                  <strong>{category.name}:</strong> {category.description}
+                </li>
+              ))
+            }
+          </ul>
+        </div>
+
+        <div>
+          <h2 class="mt-4 text-subtitle">Correcciones</h2>
+          <p class="text-ink-soft">
+            {SITE.maintainer}. Para avisar de un error de dato, de una serie caducada o de una
+            metodología que ya no se aplique, escribe a{' '}
+            <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a>. Toda corrección se
+            publica con su fecha en el registro de actualización.
+          </p>
+        </div>
+      </div>
+    </article>
+  </SiteChrome>
+</BaseLayout>

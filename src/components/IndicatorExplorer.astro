@@ -1,0 +1,89 @@
+---
+import type { Indicator } from '../types';
+import { CATEGORIES } from '../data/indicators';
+import IndicatorRow from './IndicatorRow.astro';
+
+interface Props {
+  indicators: Indicator[];
+}
+
+const { indicators } = Astro.props;
+
+const counts = new Map(
+  CATEGORIES.map((category) => [
+    category.id,
+    indicators.filter((indicator) => indicator.category === category.id),
+  ]),
+);
+
+const chip =
+  'chip chip-pressed';
+---
+
+<section class="page-shell section-block" id="explorador">
+  <div class="section-head title-measure">
+    <p class="eyebrow">Explorador por categorías</p>
+    <h2 class="text-title">Catorce indicadores, cada uno con su fuente</h2>
+    <p class="text-lede text-muted">
+      Filtra por categoría. Cada fila lleva el valor inicial, el más reciente y la variación,
+      con el enlace a la tabla oficial de la que sale.
+    </p>
+  </div>
+
+  <fieldset class="mb-8 flex flex-wrap gap-2.5 border-0 p-0 [&_legend]:pb-3 [&_legend]:text-[0.9rem] [&_legend]:text-muted">
+    <legend>Filtrar por categoría</legend>
+    <button class={chip} type="button" data-filter="all" aria-pressed="true">Todas</button>
+    {
+      CATEGORIES.map((category) => (
+        <button
+          class={chip}
+          type="button"
+          data-filter={category.id}
+          aria-pressed="false"
+          aria-controls="lista-indicadores"
+        >
+          {category.name} ({counts.get(category.id)?.length ?? 0})
+        </button>
+      ))
+    }
+  </fieldset>
+
+  <p
+    class="rounded-shell border border-dashed border-rule-strong p-8 text-muted"
+    id="sin-resultados"
+    hidden
+  >
+    No hay indicadores verificados en esta categoría.
+  </p>
+
+  <div class="grid gap-4 lg:gap-6" id="lista-indicadores">
+    {
+      indicators.map((indicator) => <IndicatorRow indicator={indicator} />)
+    }
+  </div>
+</section>
+
+<script>
+  const buttons = document.querySelectorAll<HTMLButtonElement>('[data-filter]');
+  const rows = document.querySelectorAll<HTMLElement>('[data-category]');
+  const empty = document.getElementById('sin-resultados');
+
+  const apply = (value: string) => {
+    let visible = 0;
+    for (const row of rows) {
+      const match = value === 'all' || row.dataset.category === value;
+      row.hidden = !match;
+      if (match) visible += 1;
+    }
+    if (empty) empty.hidden = visible > 0;
+    for (const button of buttons) {
+      button.setAttribute('aria-pressed', String(button.dataset.filter === value));
+    }
+  };
+
+  for (const button of buttons) {
+    button.addEventListener('click', () => {
+      apply(button.dataset.filter ?? 'all');
+    });
+  }
+</script>

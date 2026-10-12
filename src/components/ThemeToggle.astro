@@ -1,0 +1,105 @@
+---
+/**
+ * Interruptor de tema oscuro/claro.
+ *
+ * El icono es un disco con dos hemisferios: la línea vertical marca el estado
+ * y el relleno se intercambia. El `aria-pressed` refleja el estado real, así
+ * que el control no depende del color para ser entendido.
+ *
+ * Se rendersiza en el servidor con el estado por defecto (oscuro). El script
+ * de la cabecera ya ha aplicado la preferencia guardada antes de pintar; este
+ * script solo sincroniza la etiqueta y los iconos con ese estado.
+ */
+---
+
+<button
+  class="inline-flex h-11 w-11 cursor-pointer items-center justify-center rounded-full border border-rule bg-transparent text-ink-soft transition-[background-color,border-color,color,transform] duration-400 ease-[cubic-bezier(0.32,0.72,0,1)] hover:border-rule-strong hover:text-ink active:scale-95"
+  type="button"
+  id="theme-toggle"
+  aria-pressed="true"
+  aria-label="Cambiar a tema claro"
+  title="Cambiar tema"
+>
+  <svg
+    class="block h-[1.15rem] w-[1.15rem]"
+    viewBox="0 0 20 20"
+    fill="none"
+    aria-hidden="true"
+    focusable="false"
+  >
+    <!-- Disco: sombreado cuando el tema activo es el oscuro. -->
+    <circle
+      class="theme-icon-dark"
+      cx="10"
+      cy="10"
+      r="6.25"
+      stroke="currentColor"
+      stroke-width="1.4"
+    ></circle>
+    <path
+      class="theme-icon-dark"
+      d="M10 3.75a6.25 6.25 0 0 1 0 12.5z"
+      fill="currentColor"
+    ></path>
+    <!-- Sol: solo visible en tema claro. -->
+    <g class="theme-icon-light" style="display:none">
+      <circle cx="10" cy="10" r="4" stroke="currentColor" stroke-width="1.4"></circle>
+      <path
+        d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M16 4l-1.4 1.4M5.4 14.6 4 16"
+        stroke="currentColor"
+        stroke-width="1.4"
+        stroke-linecap="round"
+      ></path>
+    </g>
+  </svg>
+</button>
+
+<script>
+  const TOGGLE_ID = 'theme-toggle';
+
+  type Theme = 'dark' | 'light';
+
+  const readTheme = (): Theme =>
+    document.documentElement.dataset.theme === 'light' ? 'light' : 'dark';
+
+  const other = (theme: Theme): Theme => (theme === 'dark' ? 'light' : 'dark');
+
+  const apply = (button: HTMLButtonElement, theme: Theme) => {
+    document.documentElement.dataset.theme = theme;
+    // Mantiene los controles nativos (select, scrollbar) alineados con el tema.
+    document.documentElement.style.colorScheme = theme;
+
+    const next = other(theme);
+    button.setAttribute('aria-pressed', String(theme === 'dark'));
+    button.setAttribute('aria-label', `Cambiar a tema ${next}`);
+
+    for (const icon of button.querySelectorAll<SVGElement>('.theme-icon-light')) {
+      icon.style.display = theme === 'light' ? '' : 'none';
+    }
+    for (const icon of button.querySelectorAll<SVGElement>('.theme-icon-dark')) {
+      icon.style.display = theme === 'dark' ? '' : 'none';
+    }
+
+    try {
+      localStorage.setItem('tema', theme);
+    } catch {
+      // Modo privado o almacenamiento bloqueado: el tema cambia igual, solo no
+      // se recuerda entre visitas.
+    }
+
+    // Las gráficas de Chart.js llevan su paleta incrustada en el momento de
+    // crearse. Este aviso les permite releer los tokens y repintarse.
+    window.dispatchEvent(new CustomEvent('tema:cambiado', { detail: theme }));
+  };
+
+  const sync = (button: HTMLButtonElement) => apply(button, readTheme());
+
+  const buttons = document.querySelectorAll<HTMLButtonElement>(`#${TOGGLE_ID}`);
+
+  for (const button of buttons) {
+    // El servidor renderiza el estado por defecto; se corrige con la
+    // preferencia real en cuanto el DOM está disponible.
+    sync(button);
+    button.addEventListener('click', () => apply(button, other(readTheme())));
+  }
+</script>

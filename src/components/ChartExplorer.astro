@@ -1,0 +1,339 @@
+---
+import type { Indicator } from '../types';
+import { CATEGORIES } from '../data/indicators';
+import { formatNumber, periodLabel } from '../lib/indicators';
+import SourceLink from './SourceLink.astro';
+
+interface Props {
+  indicators: Indicator[];
+}
+
+const { indicators } = Astro.props;
+
+if (!indicators.length) {
+  throw new Error('ChartExplorer necesita al menos un indicador verificado.');
+}
+
+const defaultIndicator = indicators[0] as Indicator;
+
+const categoryName = new Map(CATEGORIES.map((category) => [category.id, category.name]));
+
+/**
+ * Se pasa la misma fuente tipada que usan las tarjetas y las tablas: una sola
+ * fuente de verdad para cifras, gráficas y texto alternativo. El renderizado
+ * de la serie vive en `scripts/series-chart.ts`, compartido con la ficha de
+ * cada indicador.
+ */
+const payload = indicators.map((indicator) => ({
+  id: indicator.id,
+  title: indicator.title,
+  unit: indicator.unit,
+  decimals: indicator.decimals,
+  baselinePeriod: indicator.baselinePeriod,
+  currentPeriod: indicator.currentPeriod,
+  sourceUrl: indicator.source.url,
+  sourceShort: indicator.source.name.split('—')[0]?.trim() ?? indicator.source.name,
+  category: categoryName.get(indicator.category) ?? indicator.category,
+  es: indicator.series.es.map((point) => ({ period: point.period, value: point.value })),
+  eu: indicator.series.eu?.map((point) => ({ period: point.period, value: point.value })) ?? null,
+}));
+---
+
+<section class="page-shell section-block" id="grafica">
+  <div class="mb-12 grid gap-5 prose-measure">
+    <p class="eyebrow">Gráficas de evolución histórica</p>
+    <h2 class="text-title">Del primer dato al último, sin esconder los altibajos</h2>
+    <p class="text-lede text-muted">
+      Cada gráfica muestra la serie completa desde 2017 o 2018, no solo los dos extremos. Elige un
+      indicador y, cuando exista una serie armonizada equivalente, compáralo con la media de la
+      Unión Europea. Debajo de cada gráfica hay siempre la tabla con todos los valores.
+    </p>
+  </div>
+
+  <div class="plate">
+    <div class="plate-core p-6 lg:p-8">
+      <div class="grid gap-8">
+        <div class="grid items-end gap-5 md:grid-cols-[2fr_1fr_1fr]">
+          <div class="grid min-w-0 gap-2.5">
+            <label class="text-[0.8125rem] tracking-[0.12em] uppercase text-muted" for="chart-indicator">
+              Indicador
+            </label>
+            <select
+              class="min-h-12 w-full cursor-pointer rounded-full border border-rule bg-surface-raised px-5 py-3 text-[0.95rem] text-ink transition-colors duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-rule-strong"
+              id="chart-indicator"
+            >
+              {
+                indicators.map((indicator) => (
+                  <option value={indicator.id}>
+                    {categoryName.get(indicator.category)} · {indicator.title}
+                  </option>
+                ))
+              }
+            </select>
+          </div>
+
+          <fieldset class="grid min-w-0 gap-2.5 border-0 p-0">
+            <legend class="p-0 text-[0.8125rem] tracking-[0.12em] uppercase text-muted">Vista</legend>
+            <div class="flex flex-wrap gap-2">
+              <button class="chip chip-pressed" type="button" data-view="line" aria-pressed="true">
+                Evolución
+              </button>
+              <button class="chip chip-pressed" type="button" data-view="bar" aria-pressed="false">
+                Comparar periodos
+              </button>
+            </div>
+          </fieldset>
+
+          <fieldset class="grid min-w-0 gap-2.5 border-0 p-0" id="eu-toggle" hidden>
+            <legend class="p-0 text-[0.8125rem] tracking-[0.12em] uppercase text-muted">
+              Comparar con
+            </legend>
+            <div class="flex flex-wrap gap-2">
+              <button class="chip chip-pressed" type="button" data-geo="es" aria-pressed="true">
+                España
+              </button>
+              <button class="chip chip-pressed" type="button" data-geo="eu" aria-pressed="false">
+                España y UE
+              </button>
+            </div>
+          </fieldset>
+        </div>
+
+        <p
+          class="max-w-[70ch] text-[1rem] leading-relaxed text-muted"
+          id="chart-status"
+          role="status"
+          aria-live="polite"
+        ></p>
+
+        <figure class="grid gap-5">
+          <div class="chart-canvas">
+            <canvas
+              id="chart-canvas"
+              role="img"
+              aria-describedby="chart-status"
+              aria-label="Gráfica interactiva. Los valores exactos están disponibles en la tabla de datos que sigue a la gráfica."
+            ></canvas>
+          </div>
+          <figcaption class="flex flex-wrap gap-x-8 gap-y-2 text-[0.95rem] text-muted">
+            <span id="chart-title"></span>
+            <span id="chart-periods"></span>
+          </figcaption>
+        </figure>
+
+        <details
+          class="group card-well px-5 py-4 transition-colors duration-400 ease-[cubic-bezier(0.16,1,0.3,1)] hover:border-rule-strong [&[open]>summary]:mb-4 [&>summary]:flex [&>summary]:min-h-11 [&>summary]:cursor-pointer [&>summary]:items-center [&>summary]:gap-3 [&>summary]:font-semibold"
+          id="chart-data"
+        >
+          <summary>
+            <span
+              class="button-icon group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+              aria-hidden="true"
+            >
+              <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+                <path
+                  d="M6 3h7v7M13 3 4.5 11.5M11.5 13H3V4.5"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"></path>
+              </svg>
+            </span>
+            Ver la tabla de datos completa
+          </summary>
+          <div class="overflow-x-auto">
+            <table
+              class="w-full text-[0.95rem] [&_caption]:pb-4 [&_caption]:text-[0.9rem] [&_caption]:text-muted [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_th]:text-left [&_td]:text-left"
+              id="chart-table"
+            >
+              <caption class="text-left text-muted" id="chart-caption">
+                {defaultIndicator.title}. Unidad: {defaultIndicator.unit}. Serie desde{' '}
+                {defaultIndicator.baselineLabel}.
+              </caption>
+              <thead>
+                <tr>
+                  <th scope="col" class="data-thead data-cell">Periodo</th>
+                  <th scope="col" class="data-thead data-cell table-numeric">España</th>
+                  <th scope="col" class="data-thead data-cell table-numeric" id="chart-eu-head">
+                    Unión Europea
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {
+                  // La tabla del primer indicador se renderiza en el servidor:
+                  // sin JavaScript, la alternativa accesible a la gráfica ya está
+                  // en el HTML, no aparece un hueco vacío.
+                  defaultIndicator.series.es.map((point) => {
+                    const eu = defaultIndicator.series.eu?.find(
+                      (item) => item.period === point.period,
+                    );
+                    return (
+                      <tr>
+                        <th scope="row" class="data-cell font-normal">{periodLabel(point.period)}</th>
+                        <td class="data-cell table-numeric">
+                          {formatNumber(point.value, defaultIndicator.decimals)}
+                        </td>
+                        <td class="data-cell table-numeric">
+                          {eu ? formatNumber(eu.value, defaultIndicator.decimals) : '—'}
+                        </td>
+                      </tr>
+                    );
+                  })
+                }
+              </tbody>
+            </table>
+          </div>
+          <p class="mt-4" id="chart-source">
+            <SourceLink
+              href={defaultIndicator.source.url}
+              label={`Ver serie en ${defaultIndicator.source.name.split('—')[0]?.trim()}`}
+            />
+          </p>
+        </details>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script
+  is:inline
+  type="application/json"
+  id="chart-data-payload"
+  set:html={JSON.stringify(payload)}
+/>
+
+<script>
+  import {
+    describeChart,
+    formatValue,
+    longPeriod,
+    mountSeriesChart,
+    onFirstVisible,
+    prefersReducedMotion,
+    type ChartState,
+    type SeriesPayload,
+  } from '../scripts/series-chart';
+
+  const canvas = document.getElementById('chart-canvas') as HTMLCanvasElement | null;
+  const select = document.getElementById('chart-indicator') as HTMLSelectElement | null;
+  const status = document.getElementById('chart-status');
+  const titleEl = document.getElementById('chart-title');
+  const periodsEl = document.getElementById('chart-periods');
+  const tableBody = document.querySelector('#chart-table tbody');
+  const euHead = document.getElementById('chart-eu-head');
+  const euToggle = document.getElementById('eu-toggle');
+  const sourceEl = document.getElementById('chart-source');
+  const captionEl = document.getElementById('chart-caption');
+  const payloadEl = document.getElementById('chart-data-payload');
+
+  if (canvas && select && payloadEl) {
+    const data = JSON.parse(payloadEl.textContent ?? '[]') as SeriesPayload[];
+    const byId = new Map(data.map((item) => [item.id, item]));
+
+    let state: ChartState = { view: 'line', compareEu: false };
+    let handle: Awaited<ReturnType<typeof mountSeriesChart>> | null = null;
+    let started = false;
+
+    const current = (): SeriesPayload => byId.get(select?.value ?? '') ?? (data[0] as SeriesPayload);
+
+    /** Redibuja la tabla accesible: siempre refleja el indicador y el estado. */
+    const renderTable = (item: SeriesPayload, geoOn: boolean) => {
+      if (!tableBody) return;
+      const eu = new Map((item.eu ?? []).map((point) => [point.period, point.value]));
+      tableBody.replaceChildren();
+      for (const point of item.es) {
+        const tr = document.createElement('tr');
+        const th = document.createElement('th');
+        th.scope = 'row';
+        th.className = 'data-cell font-normal';
+        th.textContent = longPeriod(point.period);
+        const tdEs = document.createElement('td');
+        tdEs.className = 'data-cell table-numeric';
+        tdEs.textContent = formatValue(point.value, item.decimals);
+        const tdEu = document.createElement('td');
+        tdEu.className = 'data-cell table-numeric';
+        tdEu.textContent =
+          geoOn && eu.has(point.period)
+            ? formatValue(eu.get(point.period) ?? 0, item.decimals)
+            : '—';
+        tr.append(th, tdEs, tdEu);
+        tableBody.append(tr);
+      }
+      if (euHead) euHead.hidden = !geoOn;
+      if (captionEl) {
+        captionEl.textContent = `${item.title}. Unidad: ${item.unit}. Serie desde ${longPeriod(
+          item.baselinePeriod,
+        )}.`;
+      }
+    };
+
+    const renderSource = (item: SeriesPayload) => {
+      if (!sourceEl) return;
+      sourceEl.replaceChildren();
+      const link = document.createElement('a');
+      link.href = item.sourceUrl;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+      link.textContent = `Ver serie en ${item.sourceShort}`;
+      sourceEl.append(link);
+    };
+
+    const draw = async () => {
+      const item = current();
+      // El toggle UE solo tiene sentido en la vista de línea.
+      const effective: ChartState = {
+        ...state,
+        compareEu: state.view === 'line' && state.compareEu,
+      };
+      const geoOn = effective.compareEu && Boolean(item.eu);
+
+      if (titleEl) titleEl.textContent = `${item.category} · ${item.title}`;
+      if (periodsEl) periodsEl.textContent = `Unidad: ${item.unit}`;
+      if (status) status.textContent = describeChart(item, effective);
+      if (euToggle) euToggle.hidden = !item.eu || state.view !== 'line';
+      renderTable(item, geoOn);
+      renderSource(item);
+
+      handle = await mountSeriesChart(canvas, item, effective, {
+        reducedMotion: prefersReducedMotion(),
+      });
+    };
+
+    onFirstVisible(canvas, () => {
+      started = true;
+      void draw();
+    });
+
+    const redraw = async () => {
+      if (!started) return;
+      handle?.destroy();
+      handle = null;
+      await draw();
+    };
+
+    select.addEventListener('change', () => void redraw());
+
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[data-view]')) {
+      button.addEventListener('click', () => {
+        state.view = button.dataset.view === 'bar' ? 'bar' : 'line';
+        for (const other of document.querySelectorAll('[data-view]')) {
+          other.setAttribute('aria-pressed', String(other === button));
+        }
+        void redraw();
+      });
+    }
+
+    for (const button of document.querySelectorAll<HTMLButtonElement>('[data-geo]')) {
+      button.addEventListener('click', () => {
+        state.compareEu = button.dataset.geo === 'eu';
+        for (const other of document.querySelectorAll('[data-geo]')) {
+          other.setAttribute('aria-pressed', String(other === button));
+        }
+        void redraw();
+      });
+    }
+
+    // Cambiar de tema altera los colores de la paleta: la gráfica se repinta.
+    window.addEventListener('tema:cambiado', () => void redraw());
+  }
+</script>

@@ -1,0 +1,155 @@
+---
+import type { Indicator } from '../types';
+import { PENDING } from '../data/site';
+import { formatNumber } from '../lib/indicators';
+
+interface Props {
+  indicators: Indicator[];
+}
+
+const { indicators } = Astro.props;
+
+// La clasificación usa el `reading` declarado en cada ficha, no el signo del
+// número. Un indicador neutro no entra en ninguna de las dos columnas.
+const improved = indicators.filter((indicator) => indicator.change.verdict === 'mejora');
+const worsened = indicators.filter((indicator) => indicator.change.verdict === 'empeora');
+const neutral = indicators.filter(
+  (indicator) =>
+    indicator.change.verdict !== 'mejora' && indicator.change.verdict !== 'empeora',
+);
+
+const tableClasses =
+  'w-full text-[0.95rem] [&_caption]:pb-4 [&_caption]:text-[0.9rem] [&_caption]:text-muted [&_th]:px-4 [&_th]:py-3 [&_td]:px-4 [&_td]:py-3 [&_th]:text-left [&_td]:text-left';
+---
+
+<section class="page-shell section-block" id="balance">
+  <div class="section-head title-measure">
+    <p class="eyebrow">Lectura equilibrada</p>
+    <h2 class="text-title">Qué mejora, qué empeora y qué sigue sin veredicto</h2>
+    <p class="text-lede text-muted">
+      La clasificación no se deduce de si el número sube o baja, sino de cómo se define cada
+      indicador. Cuando el sentido depende de un valor de referencia, la cifra aparece aparte, sin
+      etiqueta. Ninguna de estas listas atribuye un cambio a un gobierno concreto.
+    </p>
+  </div>
+
+  <!--
+    Antes eran tres placas idénticas con el mismo doble bisel, lo que leía como
+    una rejilla de plantilla. Ahora la distinción la marca el filete de color
+    superior y el recuento, y las columnas van sobre el fondo: menos cajas,
+    más ritmo.
+  -->
+  <div class="grid gap-x-10 gap-y-12 md:grid-cols-3">
+    <div class="border-t-2 border-rise pt-5">
+      <p class="flex items-baseline gap-2 text-[0.8125rem] font-semibold text-rise">
+        <span aria-hidden="true">▲</span>
+        {improved.length} en su propia definición
+      </p>
+      <h3 class="mt-3 text-subtitle">Mejoran</h3>
+      <ul class="mt-5 grid list-none gap-4 p-0">
+        {
+          improved.map((indicator) => (
+            <li class="text-[0.95rem] leading-relaxed">
+              <a href={`/indicadores/${indicator.id}/`}>{indicator.title}</a>{' '}
+              <span class="font-mono tabular-nums text-rise">{indicator.change.absoluteLabel}</span>
+              <br />
+              <span class="text-muted">
+                {indicator.baselineLabel} → {indicator.currentLabel}
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+
+    <div class="border-t-2 border-fall pt-5">
+      <p class="flex items-baseline gap-2 text-[0.8125rem] font-semibold text-fall">
+        <span aria-hidden="true">▼</span>
+        {worsened.length} en su propia definición
+      </p>
+      <h3 class="mt-3 text-subtitle">Empeoran</h3>
+      <ul class="mt-5 grid list-none gap-4 p-0">
+        {
+          worsened.length ? (
+            worsened.map((indicator) => (
+              <li class="text-[0.95rem] leading-relaxed">
+                <a href={`/indicadores/${indicator.id}/`}>{indicator.title}</a>{' '}
+                <span class="font-mono tabular-nums text-fall">
+                  {indicator.change.absoluteLabel}
+                </span>
+                <br />
+                <span class="text-muted">
+                  {indicator.baselineLabel} → {indicator.currentLabel}
+                </span>
+              </li>
+            ))
+          ) : (
+            <li class="text-[0.95rem] leading-relaxed text-muted">
+              Ningún indicador publicado empeora según su propia definición.
+            </li>
+          )
+        }
+      </ul>
+    </div>
+
+    <div class="border-t-2 border-rule-strong pt-5">
+      <p class="flex items-baseline gap-2 text-[0.8125rem] font-semibold text-muted">
+        <span aria-hidden="true">◆</span>
+        {neutral.length} sin veredicto automático
+      </p>
+      <h3 class="mt-3 text-subtitle">Cambian de nivel</h3>
+      <ul class="mt-5 grid list-none gap-4 p-0">
+        {
+          neutral.map((indicator) => (
+            <li class="text-[0.95rem] leading-relaxed">
+              <a href={`/indicadores/${indicator.id}/`}>{indicator.title}</a>{' '}
+              <span class="font-mono tabular-nums text-muted">
+                ({indicator.change.absoluteLabel})
+              </span>
+              <br />
+              <span class="text-muted">
+                {formatNumber(indicator.baselineValue, indicator.decimals)} (
+                {indicator.baselineLabel}) → {formatNumber(indicator.currentValue, indicator.decimals)} (
+                {indicator.currentLabel})
+              </span>
+            </li>
+          ))
+        }
+      </ul>
+    </div>
+  </div>
+
+  <div class="mt-24">
+    <div class="section-head title-measure">
+      <h3 class="text-subtitle">Retos que esta página no resuelve</h3>
+      <p class="text-lede text-muted">
+        Indicadores de interés público que no se publican porque no hemos encontrado una serie
+        oficial homogénea que permita una comparación honesta. Se listan con el motivo.
+      </p>
+    </div>
+
+    <div class="overflow-x-auto">
+      <table class={tableClasses}>
+        <caption class="text-left text-muted">
+          Temas considerados y excluidos por falta de serie comparable verificada
+        </caption>
+        <thead>
+          <tr>
+            <th scope="col" class="data-thead data-cell w-56">Tema</th>
+            <th scope="col" class="data-thead data-cell">Motivo de la exclusión</th>
+          </tr>
+        </thead>
+        <tbody>
+          {
+            PENDING.map((item) => (
+              <tr>
+                <th scope="row" class="data-cell align-top font-semibold">{item.topic}</th>
+                <td class="data-cell align-top leading-relaxed text-muted">{item.reason}</td>
+              </tr>
+            ))
+          }
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>

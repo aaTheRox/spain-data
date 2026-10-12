@@ -1,0 +1,85 @@
+---
+import { SITE } from '../data/site';
+import '../styles/global.css';
+
+export interface Props {
+  title: string;
+  description: string;
+  /** Ruta estable de la página, usada para canonical y Open Graph. */
+  path?: string;
+  /** Datos estructurados faithful al contenido visible. */
+  structuredData?: Record<string, unknown> | Record<string, unknown>[];
+}
+
+const { title, description, path = '/', structuredData } = Astro.props;
+
+const canonical = new URL(path, SITE.url).href;
+const fullTitle = path === '/' ? `${title} | ${SITE.name}` : `${title} · ${SITE.name}`;
+
+/**
+ * Script anti-parpadeo. Se ejecuta de forma síncrona en el <head>, antes de
+ * pintar, para que el tema guardado no aparezca un destello del color
+ * contrario. Va en línea a propósito: un módulo externo llegaría tarde.
+ */
+const themeBootstrap = `
+(function () {
+  try {
+    var saved = localStorage.getItem('tema');
+    var theme = saved === 'light' || saved === 'dark' ? saved : 'dark';
+    var root = document.documentElement;
+    root.dataset.theme = theme;
+    root.style.colorScheme = theme;
+  } catch (e) {
+    document.documentElement.dataset.theme = 'dark';
+  }
+})();
+`;
+---
+
+<!doctype html>
+<html lang={SITE.lang} data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+
+    <script is:inline set:html={themeBootstrap} />
+
+    <meta property="og:type" content="website" />
+    <meta property="og:locale" content={SITE.locale} />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="twitter:card" content="summary" />
+
+    <meta name="robots" content="index, follow" />
+    <meta name="author" content={SITE.maintainer} />
+    <link
+      rel="alternate"
+      type="application/rss+xml"
+      title={`${SITE.name}: fecha de revisión de los datos`}
+      href={new URL('/actualizacion.xml', SITE.url).href}
+    />
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap"
+    />
+
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData ?? {})} is:inline />
+  </head>
+  <body>
+    <a
+      class="absolute top-0 left-[-9999px] rounded-full bg-accent px-5 py-3 font-semibold text-accent-ink focus:top-4 focus:left-4"
+      href="#contenido"
+    >
+      Saltar al contenido principal
+    </a>
+    <slot />
+  </body>
+</html>

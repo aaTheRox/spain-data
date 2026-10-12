@@ -1,0 +1,118 @@
+---
+import type { Indicator } from '../types';
+import { CATEGORIES } from '../data/indicators';
+import { formatNumber } from '../lib/indicators';
+import SourceLink from './SourceLink.astro';
+import TrendTag from './TrendTag.astro';
+
+interface Props {
+  indicator: Indicator;
+}
+
+const { indicator } = Astro.props;
+
+const category = CATEGORIES.find((item) => item.id === indicator.category)?.name;
+---
+
+<!--
+  Tarjeta de indicador. Comparte construcción con la tarjeta de la gráfica:
+  doble bisel (`plate` + `plate-core`), mismo padding interior y un encaje
+  anidado (`card-well`) para las cifras. La lista deja de ser una pared de
+  filetes horizontales: cada indicador es una pieza con volumen propio.
+
+  Sobre el desbordamiento en móvil: las cifras van en dos columnas por debajo
+  de `sm` y la variación ocupa una banda aparte, no una tercera columna. Con
+  tres columnas a 375 px la cifra más larga («1.146.402») no cabía y la etiqueta
+  de tendencia se partía en tres líneas. Cada celda conserva `min-w-0`.
+-->
+<article
+  class="plate plate-lift group scroll-mt-32"
+  id={indicator.id}
+  data-category={indicator.category}
+  data-trend={indicator.trend}
+>
+  <div
+    class="plate-core grid gap-7 p-6 sm:gap-8 lg:grid-cols-[minmax(0,1fr)_minmax(0,25rem)] lg:items-center lg:gap-12 lg:p-8"
+  >
+    <div class="min-w-0">
+      <div class="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+        <p class="eyebrow">{category}</p>
+        <span class="text-[0.9rem]">
+          <SourceLink
+            href={indicator.source.url}
+            label={`Ver serie en ${indicator.source.name.split('—')[0]?.trim()}`}
+            sourceName={indicator.source.name}
+          />
+        </span>
+      </div>
+
+      <h3 class="mt-6 flex items-start gap-4 text-[clamp(1.5rem,2.6vw,2rem)]">
+        <a
+          class="text-ink no-underline decoration-transparent underline-offset-[0.2em] transition-colors duration-300 group-hover:underline group-hover:decoration-accent"
+          href={`/indicadores/${indicator.id}/`}
+        >
+          {indicator.title}
+        </a>
+        <!-- Icono dentro de su propio círculo: se desplaza en el hover del
+             grupo, no es un adorno suelto junto al titular. -->
+        <span
+          class="button-icon group-hover:translate-x-0.5 group-hover:-translate-y-0.5"
+          aria-hidden="true"
+        >
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
+            <path
+              d="M6 3h7v7M13 3 4.5 11.5M11.5 13H3V4.5"
+              stroke="currentColor"
+              stroke-width="1.6"
+              stroke-linecap="round"></path>
+          </svg>
+        </span>
+      </h3>
+
+      <p class="mt-4 max-w-[52ch] text-[0.95rem] leading-relaxed text-muted">
+        {indicator.summary}
+      </p>
+    </div>
+
+    <div class="card-well min-w-0 p-5 sm:p-6">
+      <div
+        class="grid grid-cols-2 gap-x-5 sm:[&>*:not(:first-child)]:border-l sm:[&>*:not(:first-child)]:border-rule sm:[&>*:not(:first-child)]:pl-5"
+      >
+        <div class="min-w-0">
+          <p class="text-[0.6875rem] tracking-[0.14em] uppercase text-muted">Inicial</p>
+          <p
+            class="mt-1.5 font-mono text-[clamp(1.15rem,3.4vw,1.5rem)] leading-none tabular-nums text-ink-soft"
+          >
+            {formatNumber(indicator.baselineValue, indicator.decimals)}
+          </p>
+          <p class="mt-2 text-[0.8125rem] leading-tight text-muted">{indicator.baselineLabel}</p>
+        </div>
+
+        <div class="min-w-0">
+          <p class="flex items-center gap-2 text-[0.6875rem] tracking-[0.14em] uppercase text-muted">
+            <span class="size-[5px] rounded-full bg-accent" aria-hidden="true"></span>
+            Actual
+          </p>
+          <p
+            class="mt-1.5 font-mono text-[clamp(1.15rem,3.4vw,1.5rem)] leading-none tabular-nums text-ink"
+          >
+            {formatNumber(indicator.currentValue, indicator.decimals)}
+          </p>
+          <p class="mt-2 text-[0.8125rem] leading-tight text-muted">{indicator.currentLabel}</p>
+        </div>
+      </div>
+
+      <!--
+        La variación ocupa una banda propia: en una tercera columna estrecha la
+        etiqueta se partía en tres líneas. Aquí tiene el ancho del encaje y
+        queda alineada con el resto de cifras.
+      -->
+      <div
+        class="mt-5 flex flex-wrap items-center justify-between gap-x-4 gap-y-3 border-t border-rule pt-5"
+      >
+        <p class="text-[0.6875rem] tracking-[0.14em] uppercase text-muted">Variación</p>
+        <TrendTag indicator={indicator} />
+      </div>
+    </div>
+  </div>
+</article>

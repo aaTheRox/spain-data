@@ -1,0 +1,46 @@
+---
+import BaseLayout from '../layouts/BaseLayout.astro';
+import SiteChrome from '../components/SiteChrome.astro';
+import { getPublishedIndicators } from '../lib/indicators';
+import { DATA_REVIEWED_AT } from '../data/indicators';
+import { SITE } from '../data/site';
+
+const indicators = getPublishedIndicators();
+---
+
+<BaseLayout
+  title="Página no encontrada"
+  description="La dirección solicitada no existe en este sitio."
+  path="/404/"
+>
+  <SiteChrome>
+    <section class="page-shell pt-[clamp(3rem,9vh,6rem)] pb-[var(--spacing-section)]">
+      <p class="eyebrow">Error 404</p>
+      <h1 class="mt-8 max-w-[18ch] text-hero">Esta dirección no existe</h1>
+      <p class="mt-8 max-w-[54ch] text-lede text-ink-soft">
+        Puede que el enlace esté mal escrito o que el indicador se haya retirado por una revisión de
+        la fuente. Desde aquí puedes volver al listado completo o a la metodología.
+      </p>
+      <p class="mt-10">
+        <a class="button button-solid" href="/">
+          Ver los {indicators.length} indicadores
+          <span class="button-icon" aria-hidden="true">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path
+                d="M3 8h10M9 4l4 4-4 4"
+                stroke="currentColor"
+                stroke-width="1.6"
+                stroke-linecap="round"
+                stroke-linejoin="round"></path>
+            </svg>
+          </span>
+        </a>
+      </p>
+      <p class="mt-8 max-w-[58ch] text-[0.95rem] text-muted">
+        Si el enlace venía de fuera, escribe a
+        <a href={`mailto:${SITE.contactEmail}`}>{SITE.contactEmail}</a>. Última revisión de datos:
+        {DATA_REVIEWED_AT}.
+      </p>
+    </section>
+  </SiteChrome>
+</BaseLayout>
